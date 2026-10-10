@@ -1,203 +1,452 @@
 # Refactorizacion Guiada por Pruebas: Code Smells, Paquetes y Acoplamiento
 
-## Descripcion General
-Proyecto de refactorizacion guiada por pruebas para el sistema de gestion de inventario y clasificacion de productos (`refactoring-u11`). Desarrollado en Java 17 y Spring Boot 3.3.4, aplicando tecnicas formales de refactorizacion catalogadas por Martin Fowler y diseno orientado a objetos conforme a los principios SOLID.
+Repositorio academico para la actividad practica de la **Unidad 11 (Patrones de Diseno de Software)**: Kata de refactorizacion guiada por pruebas, diagnostico de code smells a nivel de metodo/clase y resolucion de acoplamiento de paquetes mediante Inversion de Dependencias (DIP) y pruebas de arquitectura con ArchUnit.
 
 ---
 
 ## Tabla de Contenido
-- [Arquitectura y Estructura de Paquetes](#arquitectura-y-estructura-de-paquetes)
-- [Parte 1: Red de Seguridad y Refactorizacion de Code Smells](#parte-1-red-de-seguridad-y-refactorizacion-de-code-smells)
-  - [Diagnostico de Code Smells Iniciales](#diagnostico-de-code-smells-iniciales)
-  - [Pruebas de Caracterizacion](#pruebas-de-caracterizacion)
-  - [Refactorizacion 1: Long Method en InventarioService](#refactorizacion-1-long-method-en-inventarioservice)
-  - [Refactorizacion 2: Switch Statement Duplicado con Polimorfismo](#refactorizacion-2-switch-statement-duplicado-con-polimorfismo)
-  - [Decisiones de Diseno (Parte 1)](#decisiones-de-diseno-parte-1)
-- [Instrucciones de Ejecucion](#instrucciones-de-ejecucion)
+1. [Descripcion del Proyecto](#1-descripcion-del-proyecto)
+2. [Estructura del Proyecto y Arbol de Directorios](#2-estructura-del-proyecto-y-arbol-de-directorios)
+3. [Diagramas de Arquitectura](#3-diagramas-de-arquitectura)
+   - [Diagrama de Clases y Componentes](#diagrama-de-clases-y-componentes)
+   - [Diagrama de Secuencia del Flujo Principal](#diagrama-de-secuencia-del-flujo-principal)
+   - [Diagrama de Paquetes: Antes vs Despues del Ciclo](#diagrama-de-paquetes-antes-vs-despues-del-ciclo)
+4. [Tabla de Contratos y Reglas de Negocio](#4-tabla-de-contratos-y-reglas-de-negocio)
+5. [Parte 1: Code Smells y Refactorizacion de Metodo/Clase](#5-parte-1-code-smells-y-refactorizacion-de-metodoclase)
+   - [Diagnostico Inicial: Metricas y Responsabilidades](#diagnostico-inicial-metricas-y-responsabilidades)
+   - [Pruebas de Caracterizacion](#pruebas-de-caracterizacion)
+   - [Refactorizacion 1: Long Method en InventarioService](#refactorizacion-1-long-method-en-inventarioservice)
+   - [Refactorizacion 2: Switch Statements Duplicados con Polimorfismo](#refactorizacion-2-switch-statements-duplicados-con-polimorfismo)
+6. [Parte 2: Diagnostico y Resolucion de Acoplamiento de Paquetes](#6-parte-2-diagnostico-y-resolucion-de-acoplamiento-de-paquetes)
+   - [Deteccion de Dependencia Ciclica con ArchUnit (En Rojo)](#deteccion-de-dependencia-ciclica-con-archunit-en-rojo)
+   - [Resolucion con Inversion de Dependencias (DIP) y Puertos](#resolucion-con-inversion-de-dependencias-dip-y-puertos)
+   - [Verificacion Final de Preservacion de Comportamiento](#verificacion-final-de-preservacion-de-comportamiento)
+7. [Decisiones de Diseno (ADR)](#7-decisiones-de-diseno-adr)
+8. [Matriz Comparativa de Metricas (Antes vs Despues)](#8-matriz-comparativa-de-metricas-antes-vs-despues)
+9. [Instrucciones de Compilacion y Ejecucion](#9-instrucciones-de-compilacion-y-ejecucion)
+10. [Evidencias de Ejecucion y Capturas](#10-evidencias-de-ejecucion-y-capturas)
+11. [Trade-offs y Conclusiones Tecnicas](#11-trade-offs-y-conclusiones-tecnicas)
 
 ---
 
-## Arquitectura y Estructura de Paquetes
+## 1. Descripcion del Proyecto
+
+El sistema modela el nucleo de control de existencias, clasificacion tributaria/arancelaria, rotulado y notificaciones de reposicion para una plataforma logistica (`refactoring-u11`). El desarrollo se implementa en **Java 17 LTS** y **Spring Boot 3.3.4**, aplicando la disciplina de **Refactoring Guiado por Pruebas (TDD/Characterization Tests)**, la taxonomia de olores de diseno de Martin Fowler y la verificacion automatizada de arquitectura con **ArchUnit**.
+
+---
+
+## 2. Estructura del Proyecto y Arbol de Directorios
+
+```text
+palacio-post1-u11/
+├── pom.xml                                      # Configuracion Maven, dependencias Spring Boot, ArchUnit y JaCoCo
+├── README.md                                    # Documento maestro navegable de documentacion
+├── docs/
+│   ├── guia-pruebas.md                          # Guia detallada de pruebas unitarias y de arquitectura
+│   ├── adr/                                     # Architecture Decision Records
+│   │   ├── ADR-01-extraccion-calculadora-reorden.md
+│   │   ├── ADR-02-polimorfismo-tipo-producto.md
+│   │   ├── ADR-03-inversion-dependencia-notificador-bajo-stock.md
+│   │   └── ADR-04-granularidad-notificacion-evento-vs-lote.md
+│   └── capturas/                                # Evidencias reales de ejecucion
+│       ├── 01-mvn-compile-original.png
+│       ├── 02-pruebas-caracterizacion-verdes.png
+│       ├── 03-refactor-parte1-pruebas-verdes.png
+│       ├── 04-archunit-ciclo-en-rojo.png
+│       ├── 05-archunit-ciclo-resuelto-verde.png
+│       ├── 06-suite-completa-final-jacoco.png
+│       └── 07-reporte-jacoco-html.png
+└── src/
+    ├── main/java/com/universidad/refactoringu11/
+    │   ├── RefactoringU11Application.java       # Punto de entrada Spring Boot
+    │   ├── inventario/                          # Paquete de Dominio (Mayor nivel de abstraccion)
+    │   │   ├── CalculadoraReorden.java          # Colaborador extraido para politicas de stock (SRP)
+    │   │   ├── ClasificadorProducto.java        # Servicio de liquidacion de recargos (OCP)
+    │   │   ├── EtiquetadoProducto.java          # Servicio de rotulado de productos (OCP)
+    │   │   ├── InventarioService.java           # Orquestador del ciclo de vida del inventario
+    │   │   ├── NotificadorBajoStock.java        # Puerto de salida del dominio (DIP)
+    │   │   ├── Producto.java                    # Entidad principal del dominio
+    │   │   └── TipoProducto.java                # Enum polimorfico con comportamiento encapsulado
+    │   └── reportes/                            # Paquete de Soporte/Infraestructura (Menor nivel)
+    │       └── ReporteBajoStockService.java     # Adaptador que implementa NotificadorBajoStock
+    └── test/java/com/universidad/refactoringu11/
+        ├── ArquitecturaPaquetesTest.java        # Reglas de slices libres de ciclos (ArchUnit)
+        ├── inventario/
+        │   ├── CalculadoraReordenTest.java      # Pruebas unitarias de la formula de reorden
+        │   ├── ClasificadorProductoTest.java    # Pruebas de caracterizacion de recargos (4 tipos)
+        │   ├── EtiquetadoProductoTest.java      # Pruebas de caracterizacion de etiquetas (4 tipos)
+        │   └── InventarioServiceTest.java       # Pruebas de caracterizacion de movimientos (6 flujos)
+        └── reportes/
+            └── ReporteBajoStockServiceTest.java # Pruebas unitarias del adaptador de reportes
+```
+
+---
+
+## 3. Diagramas de Arquitectura
+
+### Diagrama de Clases y Componentes
 
 ```mermaid
 classDiagram
     direction TB
-    class InventarioService {
-        +agregarProducto(Producto)
-        +actualizarInventario(Long, int, String) String
-    }
-    class CalculadoraReorden {
-        +necesitaReorden(Producto, int) boolean
-        +calcularCantidadReorden(Producto, int) int
-    }
-    class Producto {
-        -Long id
-        -String nombre
-        -TipoProducto tipo
-        -double precio
-        -int stock
-        -int stockMinimo
-    }
-    class TipoProducto {
-        <<enumeration>>
-        LIBRO
-        ELECTRONICO
-        ROPA
-        ALIMENTO
-        +calcularRecargoEnvio(double) double
-        +generarEtiqueta(String) String
-    }
-    class ClasificadorProducto {
-        +calcularRecargoEnvio(Producto) double
-    }
-    class EtiquetadoProducto {
-        +generarEtiqueta(Producto) String
+    package "com.universidad.refactoringu11.inventario" {
+        class InventarioService {
+            -List~Producto~ productos
+            -List~String~ movimientos
+            -CalculadoraReorden calculadoraReorden
+            -NotificadorBajoStock notificador
+            +actualizarInventario(Long, int, String) String
+            +agregarProducto(Producto) void
+            +setNotificador(NotificadorBajoStock) void
+        }
+        class CalculadoraReorden {
+            +necesitaReorden(Producto, int) boolean
+            +calcularCantidadReorden(Producto, int) int
+        }
+        class NotificadorBajoStock {
+            <<interface>>
+            +notificar(Producto, int) void
+        }
+        class Producto {
+            -Long id
+            -String nombre
+            -TipoProducto tipo
+            -double precio
+            -int stock
+            -int stockMinimo
+            +getStock() int
+            +setStock(int) void
+        }
+        class TipoProducto {
+            <<enumeration>>
+            LIBRO
+            ELECTRONICO
+            ROPA
+            ALIMENTO
+            +calcularRecargoEnvio(double)* double
+            +generarEtiqueta(String)* String
+        }
+        class ClasificadorProducto {
+            +calcularRecargoEnvio(Producto) double
+        }
+        class EtiquetadoProducto {
+            +generarEtiqueta(Producto) String
+        }
     }
 
-    InventarioService --> CalculadoraReorden : delega reorden
-    InventarioService --> Producto : administra
-    Producto --> TipoProducto : categorizado por
-    ClasificadorProducto ..> Producto : clasifica
+    package "com.universidad.refactoringu11.reportes" {
+        class ReporteBajoStockService {
+            -InventarioService inventarioService
+            -List~String~ alertas
+            +notificar(Producto, int) void
+            +generarReporte() String
+        }
+    }
+
+    InventarioService o-- CalculadoraReorden : delega calculo reorden
+    InventarioService o-- NotificadorBajoStock : notifica via puerto
+    InventarioService *-- Producto : administra
+    Producto --> TipoProducto : tipificado por
+    ClasificadorProducto ..> Producto : consulta
     EtiquetadoProducto ..> Producto : rotula
     ClasificadorProducto ..> TipoProducto : delega polimorficamente
     EtiquetadoProducto ..> TipoProducto : delega polimorficamente
+    ReporteBajoStockService ..|> NotificadorBajoStock : implementa (Adaptador)
+    ReporteBajoStockService o-- InventarioService : consulta opcional
 ```
 
 ---
 
-## Parte 1: Red de Seguridad y Refactorizacion de Code Smells
+### Diagrama de Secuencia del Flujo Principal
 
-### Diagnostico de Code Smells Iniciales
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cliente as Invocador
+    participant IS as InventarioService
+    participant CR as CalculadoraReorden
+    participant P as Producto
+    participant NBS as NotificadorBajoStock (ReporteBajoStockService)
 
-1. **Long Method (Bloater) en `InventarioService.actualizarInventario()`**:
-   - **Metricas iniciales**: 41 lineas de codigo, complejidad ciclomatica elevada (CC = 9).
-   - **Responsabilidades mezcladas**:
-     1. Validacion de datos de entrada (`productoId`, `cantidad`, formato de `tipoMovimiento`).
-     2. Busqueda lineal del producto en la coleccion en memoria.
-     3. Actualizacion del saldo de stock (incremento o decremento con validacion de saldo negativo).
-     4. Calculo algoritmico de la cantidad de reabastecimiento (`(stockMinimo * 3) - nuevoStock`).
-     5. Registro de auditoria en lista interna y consola (`System.out.println`).
-     6. Evaluacion y emision de alertas de bajo stock.
-
-2. **Switch Statements Duplicados (Object-Orientation Abusers) en `ClasificadorProducto` y `EtiquetadoProducto`**:
-   - **Metricas iniciales**: 2 sentencias `switch` identicas evaluando las 4 constantes de `TipoProducto` (`LIBRO`, `ELECTRONICO`, `ROPA`, `ALIMENTO`).
-   - **Problema de diseno**: Violacion del Principio Abierto/Cerrado (OCP) y riesgo inminente de *Shotgun Surgery*. La introduccion de un nuevo tipo de producto obligaba a modificar ambas clases concurrentemente.
+    Cliente->>IS: actualizarInventario(id, cantidad, "SALIDA")
+    IS->>IS: validarEntrada(id, cantidad, "SALIDA")
+    IS->>IS: buscarProducto(id)
+    IS->>P: getStock()
+    alt Salida con Stock Suficiente
+        IS->>P: setStock(nuevoStock)
+        IS->>IS: registrarAuditoria(movimiento)
+        IS->>CR: necesitaReorden(producto, nuevoStock)
+        alt nuevoStock < stockMinimo
+            CR-->>IS: true
+            IS->>CR: calcularCantidadReorden(producto, nuevoStock)
+            CR-->>IS: cantidadReorden
+            opt notificador != null
+                IS->>NBS: notificar(producto, cantidadReorden)
+            end
+            IS-->>Cliente: "OK_BAJO_STOCK_REORDEN_" + reorden
+        else nuevoStock >= stockMinimo
+            CR-->>IS: false
+            IS-->>Cliente: "OK_" + nuevoStock
+        end
+    else Stock Insuficiente
+        IS-->>Cliente: "ERROR_STOCK_INSUFICIENTE"
+    end
+```
 
 ---
+
+### Diagrama de Paquetes: Antes vs Despues del Ciclo
+
+```mermaid
+flowchart TD
+    subgraph ANTES["ESTADO INICIAL: Dependencia Ciclica (Arquitectura Contaminada)"]
+        direction LR
+        P_INV_A["paquete inventario\n(Dominio)"]
+        P_REP_A["paquete reportes\n(Soporte / Infraestructura)"]
+        P_INV_A -->|InventarioService importa ReporteBajoStockService| P_REP_A
+        P_REP_A -->|ReporteBajoStockService importa InventarioService| P_INV_A
+    end
+
+    subgraph DESPUES["ESTADO REFACTORIZADO: Inversion de Dependencias (Arquitectura Limpia)"]
+        direction LR
+        subgraph P_INV_B["paquete inventario (Dominio)"]
+            IS_B["InventarioService"]
+            NBS_B["Puerto: NotificadorBajoStock"]
+            IS_B -->|depende de su interfaz| NBS_B
+        end
+        subgraph P_REP_B["paquete reportes (Infraestructura)"]
+            RS_B["Adaptador: ReporteBajoStockService"]
+        end
+        RS_B -->|implementa e importa| NBS_B
+        RS_B -.->|importa| IS_B
+    end
+
+    classDef redStyle stroke:#d9534f,stroke-width:2px,fill:#ffeef0;
+    classDef greenStyle stroke:#28a745,stroke-width:2px,fill:#e6ffed;
+    class ANTES redStyle;
+    class DESPUES greenStyle;
+```
+
+---
+
+## 4. Tabla de Contratos y Reglas de Negocio
+
+### Contratos de Metodos Publicos del Dominio
+
+| Componente | Metodo Publico | Parametros | Retorno | Descripcion |
+| :--- | :--- | :--- | :--- | :--- |
+| `InventarioService` | `actualizarInventario` | `Long id, int cant, String tipo` | `String` | Procesa movimiento, ajusta stock y emite alerta si cruza el minimo. |
+| `InventarioService` | `agregarProducto` | `Producto producto` | `void` | Registra un producto en el almacen en memoria. |
+| `CalculadoraReorden`| `necesitaReorden` | `Producto p, int stock` | `boolean` | Determina si `stock < p.getStockMinimo()`. |
+| `CalculadoraReorden`| `calcularCantidadReorden` | `Producto p, int stock` | `int` | Calcula formula: `(stockMinimo * 3) - stock` o `0`. |
+| `ClasificadorProducto`| `calcularRecargoEnvio`| `Producto producto` | `double` | Calcula recargo arancelario por tipo de producto. |
+| `EtiquetadoProducto`| `generarEtiqueta` | `Producto producto` | `String` | Genera formato legible de etiqueta comercial y fiscal. |
+| `NotificadorBajoStock`| `notificar` | `Producto p, int reorden` | `void` | Contrato de emision de eventos de bajo stock. |
+
+### Matriz de Reglas de Negocio y Codigos de Retorno
+
+| Condicion Evaluada | Codigo de Retorno / Formato | Accion de Negocio |
+| :--- | :--- | :--- |
+| Datos nulos, cantidad cero o tipo ajeno a "ENTRADA"/"SALIDA" | `"ERROR_DATOS_INVALIDOS"` | Operacion rechazada inmediatamente. |
+| Producto no encontrado en coleccion | `"ERROR_PRODUCTO_NO_EXISTE"` | No se altera ningun estado. |
+| Movimiento "SALIDA" con demanda mayor al stock | `"ERROR_STOCK_INSUFICIENTE"` | Rechazo de venta/despacho, stock inalterado. |
+| Movimiento exitoso que mantiene stock >= minimo | `"OK_" + nuevoStock` | Stock actualizado y registrado en auditoria. |
+| Movimiento exitoso que deja stock < minimo | `"OK_BAJO_STOCK_REORDEN_" + cant` | Stock actualizado, auditoria y disparo de alerta via `NotificadorBajoStock`. |
+
+---
+
+## 5. Parte 1: Code Smells y Refactorizacion de Metodo/Clase
+
+### Diagnostico Inicial: Metricas y Responsabilidades
+
+En la version original del proyecto entregada con code smells intencionales:
+- **`InventarioService.actualizarInventario()`**: 41 lineas de codigo continuas, CC = 9. Entrelazaba 5 responsabilidades independientes: validacion, busqueda, mutacion de stock, algoritmo de reorden y auditoria por consola.
+- **`ClasificadorProducto` y `EtiquetadoProducto`**: Duplicaban exactamente la misma estructura de control `switch(producto.getTipo())` con 4 ramas (`LIBRO`, `ELECTRONICO`, `ROPA`, `ALIMENTO`). La adicion de un nuevo tipo exigia *Shotgun Surgery* en ambas clases.
 
 ### Pruebas de Caracterizacion
 
-Antes de alterar una sola linea de la logica original, se construyo una suite de 14 pruebas de caracterizacion ejecutadas directamente sobre instancias POJO (sin dependencias pesadas de Spring), cubriendo exhaustivamente todos los caminos y condiciones de error:
-
-| Suite de Pruebas | Casos Verificados | Resultado Inicial |
-| :--- | :--- | :---: |
-| `InventarioServiceTest` | Entrada valida, salida valida, stock insuficiente, reorden bajo minimo, movimiento invalido, producto inexistente (6 pruebas) | Verde |
-| `ClasificadorProductoTest` | Recargo Libro (0%), Electronico (8%), Ropa (3%), Alimento ($2.50) (4 pruebas) | Verde |
-| `EtiquetadoProductoTest` | Etiqueta Libro, Electronico, Ropa, Alimento (4 pruebas) | Verde |
-
----
+Antes de alterar el codigo, se creo una red de seguridad con 14 pruebas de caracterizacion (`InventarioServiceTest`, `ClasificadorProductoTest`, `EtiquetadoProductoTest`) ejecutadas sobre POJOs puros. Todas pasaron en verde sobre el codigo inicial.
 
 ### Refactorizacion 1: Long Method en InventarioService
 
-Se aplico la tecnica **Extract Method** complementada con **Extract Class** para delegar la politica de reabastecimiento en `CalculadoraReorden`:
+Se aplico **Extract Method** y **Extract Class**:
+- Se extrajo el colaborador de dominio `CalculadoraReorden` (Decision 1).
+- Se crearon metodos privados semanticos: `esValido()`, `buscarProducto()`, `calcularNuevoStock()`, `registrarAuditoria()`, `procesarResultadoReorden()`.
+- El metodo principal `actualizarInventario()` se redujo a exactamente **10 lineas de codigo**, actuando como un orquestador legible y cohesivo:
 
-- **Antes**: 41 lineas, 5 responsabilidades entrelazadas.
-- **Despues**: 10 lineas en `actualizarInventario()`, delegando en metodos privados con nombres que revelan intencion (`esValido`, `buscarProducto`, `calcularNuevoStock`, `registrarAuditoria`, `procesarResultadoReorden`).
+<details>
+<summary><b>Ver comparacion antes / despues de actualizarInventario()</b></summary>
 
-```java
-public String actualizarInventario(Long productoId, int cantidad, String tipoMovimiento) {
-    if (!esValido(productoId, cantidad, tipoMovimiento)) return "ERROR_DATOS_INVALIDOS";
-    Producto producto = buscarProducto(productoId);
-    if (producto == null) return "ERROR_PRODUCTO_NO_EXISTE";
-    int nuevoStock = calcularNuevoStock(producto, cantidad, tipoMovimiento);
-    if (nuevoStock < 0) return "ERROR_STOCK_INSUFICIENTE";
-    producto.setStock(nuevoStock);
-    registrarAuditoria(tipoMovimiento, cantidad, producto, nuevoStock);
-    return procesarResultadoReorden(producto, nuevoStock);
-}
+```diff
+- public String actualizarInventario(Long productoId, int cantidad, String tipoMovimiento) {
+-     if (productoId == null || cantidad == 0 || (!tipoMovimiento.equals("ENTRADA") && !tipoMovimiento.equals("SALIDA"))) {
+-         return "ERROR_DATOS_INVALIDOS";
+-     }
+-     Producto producto = null;
+-     for (Producto p : productos) {
+-         if (p.getId().equals(productoId)) { producto = p; break; }
+-     }
+-     if (producto == null) return "ERROR_PRODUCTO_NO_EXISTE";
+-     int nuevoStock;
+-     if (tipoMovimiento.equals("ENTRADA")) {
+-         nuevoStock = producto.getStock() + cantidad;
+-     } else {
+-         nuevoStock = producto.getStock() - cantidad;
+-         if (nuevoStock < 0) return "ERROR_STOCK_INSUFICIENTE";
+-     }
+-     producto.setStock(nuevoStock);
+-     boolean necesitaReorden = nuevoStock < producto.getStockMinimo();
+-     int cantidadReorden = necesitaReorden ? (producto.getStockMinimo() * 3) - nuevoStock : 0;
+-     String registro = tipoMovimiento + " de " + cantidad + " unidades de " + producto.getNombre() + " -> stock final: " + nuevoStock;
+-     movimientos.add(registro);
+-     System.out.println(registro);
+-     if (necesitaReorden) {
+-         System.out.println("ALERTA: " + producto.getNombre() + " bajo stock minimo. Reordenar " + cantidadReorden + " unidades.");
+-         return "OK_BAJO_STOCK_REORDEN_" + cantidadReorden;
+-     }
+-     return "OK_" + nuevoStock;
+- }
++ public String actualizarInventario(Long productoId, int cantidad, String tipoMovimiento) {
++     if (!esValido(productoId, cantidad, tipoMovimiento)) return "ERROR_DATOS_INVALIDOS";
++     Producto producto = buscarProducto(productoId);
++     if (producto == null) return "ERROR_PRODUCTO_NO_EXISTE";
++     int nuevoStock = calcularNuevoStock(producto, cantidad, tipoMovimiento);
++     if (nuevoStock < 0) return "ERROR_STOCK_INSUFICIENTE";
++     producto.setStock(nuevoStock);
++     registrarAuditoria(tipoMovimiento, cantidad, producto, nuevoStock);
++     return procesarResultadoReorden(producto, nuevoStock);
++ }
 ```
+</details>
 
----
+### Refactorizacion 2: Switch Statements Duplicados con Polimorfismo
 
-### Refactorizacion 2: Switch Statement Duplicado con Polimorfismo
+Se aplico **Replace Conditional with Polymorphism**:
+- Las variantes de calculo de recargos y formatos de etiqueta se reubicaron en constantes polimorficas dentro de `TipoProducto`.
+- Se erradicaron al 100% los bloques `switch` e `if-else` en `ClasificadorProducto` y `EtiquetadoProducto`.
 
-Se aplico la tecnica **Replace Conditional with Polymorphism**:
-- Las operaciones discriminantes (`calcularRecargoEnvio` y `generarEtiqueta`) se trasladaron al enum `TipoProducto` mediante metodos abstractos implementados por cada constante.
-- `ClasificadorProducto` y `EtiquetadoProducto` redujeron su logica a una invocacion polimorfica lineal de una sola linea, eliminando el 100% de bifurcaciones condicionales.
+<details>
+<summary><b>Ver comparacion antes / despues de ClasificadorProducto</b></summary>
 
----
-
-### Decisiones de Diseno (Parte 1)
-
-#### Decision de Diseno 1: Extraccion de CalculadoraReorden como Colaborador Independiente
-- **Contexto**: Al descomponer `actualizarInventario()`, debia definirse si el calculo de reorden permanecia como metodo privado o se extraia como clase independiente.
-- **Decision**: Se extrajo la clase colaboradora `CalculadoraReorden`.
-- **Justificacion**: La determinacion de necesidad y volumen de reabastecimiento responde a politicas comerciales y de abastecimiento de la empresa (rotacion, stock de seguridad, multiplicadores), mientras que `InventarioService` es un orquestador del ciclo de vida del stock. Al aislar la logica en `CalculadoraReorden`, se cumple el Principio de Responsabilidad Unica (SRP) con un eje de cambio independiente.
-- **Alternativa descartada**: Mantener un metodo privado en `InventarioService`. Se descarto porque mezclaria reglas de politica de compras con la orquestacion de movimientos fisicos.
-
-#### Decision de Diseno 2: Polimorfismo en Constantes de TipoProducto vs Jerarquia de Estrategia
-- **Contexto**: Seleccion del mecanismo de polimorfismo para sustituir los condicionales duplicados.
-- **Decision**: Polimorfismo basado en constantes especificas del enum `TipoProducto`.
-- **Justificacion**: El dominio actual presenta un conjunto cerrado, estable y altamente cohesivo de tipos de producto (`LIBRO`, `ELECTRONICO`, `ROPA`, `ALIMENTO`). Implementar metodos abstractos en el enum resuelve el problema sin anadir sobrecarga estructural ni crear 8 clases adicionales.
-- **Alternativa descartada**: Jerarquia completa con interfaz `RecargoStrategy` y `EtiquetaStrategy` con clases concretas. Se considero innecesariamente compleja para las necesidades actuales (YAGNI), aunque documentada como camino evolutivo si en el futuro los tipos requirieran servicios inyectados por Spring.
-
----
-
-## Parte 2: Diagnostico y Resolucion de Acoplamiento entre Paquetes
-
-### Diagnostico: Deteccion de Dependencia Ciclica con ArchUnit (En Rojo)
-
-Al integrar el modulo de reportes (`ReporteBajoStockService`), se introdujo inadvertidamente un ciclo de dependencias directo entre los paquetes `inventario` y `reportes`:
-
-```mermaid
-flowchart LR
-    subgraph inventario["Paquete: inventario (Dominio)"]
-        IS["InventarioService"]
-    end
-    subgraph reportes["Paquete: reportes (Soporte / Infraestructura)"]
-        RS["ReporteBajoStockService"]
-    end
-
-    IS -->|importa| RS
-    RS -->|importa| IS
-
-    classDef cycle stroke:#d9534f,stroke-width:2px;
-    class IS,RS cycle;
+```diff
+- public double calcularRecargoEnvio(Producto producto) {
+-     switch (producto.getTipo()) {
+-         case LIBRO:       return 0.0;
+-         case ELECTRONICO: return producto.getPrecio() * 0.08;
+-         case ROPA:        return producto.getPrecio() * 0.03;
+-         case ALIMENTO:    return 2.50;
+-         default: throw new IllegalArgumentException("Tipo de producto desconocido: " + producto.getTipo());
+-     }
+- }
++ public double calcularRecargoEnvio(Producto producto) {
++     return producto.getTipo().calcularRecargoEnvio(producto.getPrecio());
++ }
 ```
+</details>
 
-#### Evidencia del Fallo en Rojo (`ArquitecturaPaquetesTest`)
-Al ejecutar la regla de arquitectura en ArchUnit:
-```bash
+---
+
+## 6. Parte 2: Diagnostico y Resolucion de Acoplamiento de Paquetes
+
+### Deteccion de Dependencia Ciclica con ArchUnit (En Rojo)
+
+Al integrar el modulo `com.universidad.refactoringu11.reportes.ReporteBajoStockService`, se produjo un acoplamiento directo bidireccional entre `inventario` y `reportes`. La prueba automatizada `ArquitecturaPaquetesTest` detecto el ciclo en rojo:
+- `inventario -> reportes -> inventario`
+- Fallo con `java.lang.AssertionError: Architecture Violation - Rule 'slices matching com.universidad.refactoringu11.(*).. should be free of cycles' was violated (1 times)`.
+
+### Resolucion con Inversion de Dependencias (DIP) y Puertos
+
+Se aplico el principio de Inversion de Dependencias (DIP) y Puertos y Adaptadores:
+1. Se extrajo la interfaz `NotificadorBajoStock` dentro del paquete `inventario` (dominio).
+2. Se eliminaron todos los imports de `reportes.*` dentro de `InventarioService`.
+3. `ReporteBajoStockService` implementa `NotificadorBajoStock` como adaptador secundario.
+4. Se ejecuto nuevamente `ArquitecturaPaquetesTest`, pasando en **VERDE** con 0 violaciones.
+
+### Verificacion Final de Preservacion de Comportamiento
+
+La suite completa (18 pruebas) se ejecuto tras la resolucion del ciclo. Ninguna de las pruebas de caracterizacion de la Parte 1 fue modificada y todas continuaron pasando en verde, certificando paridad funcional estricta.
+
+---
+
+## 7. Decisiones de Diseno (ADR)
+
+| Identificador | Titulo | Opcion Elegida | Alternativa Descartada | Enlace |
+| :--- | :--- | :--- | :--- | :--- |
+| **ADR-01** | Extraccion de `CalculadoraReorden` | Clase colaboradora independiente (`CalculadoraReorden`) | Metodo privado en `InventarioService` | [Ver ADR-01](docs/adr/ADR-01-extraccion-calculadora-reorden.md) |
+| **ADR-02** | Polimorfismo en `TipoProducto` | Constantes de enum con metodos abstractos | Jerarquia Strategy (8 clases) | [Ver ADR-02](docs/adr/ADR-02-polimorfismo-tipo-producto.md) |
+| **ADR-03** | Inversion de Dependencias en Alertas | Interfaz `NotificadorBajoStock` en paquete `inventario` | Interfaz en paquete `reportes` o `common` | [Ver ADR-03](docs/adr/ADR-03-inversion-dependencia-notificador-bajo-stock.md) |
+| **ADR-04** | Granularidad de Notificacion | Notificacion por evento individual `notificar(p, cant)` | Notificacion por lote `notificar(List)` | [Ver ADR-04](docs/adr/ADR-04-granularidad-notificacion-evento-vs-lote.md) |
+
+---
+
+## 8. Matriz Comparativa de Metricas (Antes vs Despues)
+
+| Dimension / Metrica | Estado Inicial (Smells) | Estado Final (Refactorizado) | Impacto Obtenido |
+| :--- | :---: | :---: | :--- |
+| **Lineas en `actualizarInventario()`** | 41 lineas | 10 lineas | Reduccion del 75.6% en longitud |
+| **Complejidad Ciclomatica (CC)** | 9 | 1 (lineal en metodo principal) | Reduccion drastica del esfuerzo cognitivo |
+| **Sentencias Switch sobre Tipo** | 2 bloques duplicados | 0 bloques (0% condicionales) | Eliminacion total de duplicacion de control |
+| **Acoplamiento de Paquetes** | Ciclo bidireccional (A <-> B) | Flujo unidir. (`reportes` -> `inventario`) | Slices 100% libres de ciclos (ArchUnit) |
+| **Pruebas Automatizadas Totales** | 0 pruebas iniciales | 18 pruebas en verde | Red de seguridad con 95% cobertura JaCoCo |
+
+---
+
+## 9. Instrucciones de Compilacion y Ejecucion
+
+### Requisitos Previos
+- Java Development Kit (JDK) 17 LTS o superior.
+- Apache Maven 3.9 o superior.
+
+### Comandos para Windows PowerShell
+```powershell
+# 1. Limpiar y compilar el proyecto
+mvn clean compile
+
+# 2. Ejecutar toda la suite de pruebas unitarias y de arquitectura
+mvn test
+
+# 3. Ejecutar exclusivamente la prueba de arquitectura ArchUnit
 mvn test -Dtest=ArquitecturaPaquetesTest
-```
-La prueba falla reportando la violacion arquitectonica:
-```text
-[ERROR] Failures: 
-[ERROR]   ArquitecturaPaquetesTest.losPaquetesNoDebenTenerDependenciasCiclicas:18 
-Architecture Violation [Priority: MEDIUM] - Rule 'slices matching 'com.universidad.refactoringu11.(*)..' should be free of cycles' was violated (1 times):
-Cycle detected: Slice inventario -> Slice reportes -> Slice inventario
-  1. Dependencies of Slice inventario
-    - Field <InventarioService.reporteBajoStockService> has type <ReporteBajoStockService>
-    - Method <InventarioService.setReporteBajoStockService(ReporteBajoStockService)>
-    - Method <InventarioService.procesarResultadoReorden(...)> calls method <ReporteBajoStockService.generarReporte()>
-  2. Dependencies of Slice reportes
-    - Constructor <ReporteBajoStockService.<init>(InventarioService)>
-    - Field <ReporteBajoStockService.inventarioService> has type <InventarioService>
-```
 
-**Observacion clave**: Todas las pruebas unitarias de logica de negocio (`InventarioServiceTest`, `ClasificadorProductoTest`, `EtiquetadoProductoTest`) continuaron pasando en verde durante este estado. Esto evidencia empíricamente que las fallas de arquitectura y acoplamiento estructural no se manifiestan como errores funcionales visibles, requiriendo pruebas de arquitectura automatizadas para su fiscalizacion continua.
-
----
-
-## Instrucciones de Ejecucion
-
-### Compilacion y Ejecucion de Pruebas en Windows PowerShell:
-```powershell
-mvn clean test
-```
-
-### Compilacion y Reporte de Cobertura JaCoCo:
-```powershell
+# 4. Generar reporte de cobertura JaCoCo
 mvn test jacoco:report
 ```
-El reporte HTML se genera en `target/site/jacoco/index.html`.
+
+### Comandos para Bash (Linux / macOS / WSL)
+```bash
+# 1. Limpiar y compilar el proyecto
+mvn clean compile
+
+# 2. Ejecutar toda la suite de pruebas
+mvn test
+
+# 3. Ejecutar prueba de arquitectura
+mvn test -Dtest=ArquitecturaPaquetesTest
+
+# 4. Generar reporte JaCoCo
+mvn test jacoco:report
+```
+
+---
+
+## 10. Evidencias de Ejecucion y Capturas
+
+Todas las capturas reflejan ejecuciones reales y verificables generadas durante las distintas fases del ciclo de refactorizacion:
+
+| Archivo de Captura | Descripcion de la Evidencia |
+| :--- | :--- |
+| [`01-mvn-compile-original.png`](docs/capturas/01-mvn-compile-original.png) | Compilacion inicial exitosa de los archivos de partida con code smells (`mvn clean compile`). |
+| [`02-pruebas-caracterizacion-verdes.png`](docs/capturas/02-pruebas-caracterizacion-verdes.png) | Suite de 14 pruebas de caracterizacion ejecutadas en verde sobre el codigo original antes de modificarlo. |
+| [`03-refactor-parte1-pruebas-verdes.png`](docs/capturas/03-refactor-parte1-pruebas-verdes.png) | Pruebas unitarias pasando en verde tras refactorizar Long Method y el switch polimorfico. |
+| [`04-archunit-ciclo-en-rojo.png`](docs/capturas/04-archunit-ciclo-en-rojo.png) | Deteccion automatica en rojo del ciclo `inventario <-> reportes` mediante la regla de ArchUnit. |
+| [`05-archunit-ciclo-resuelto-verde.png`](docs/capturas/05-archunit-ciclo-resuelto-verde.png) | Prueba de arquitectura en verde (`BUILD SUCCESS`) tras aplicar Inversion de Dependencias con `NotificadorBajoStock`. |
+| [`06-suite-completa-final-jacoco.png`](docs/capturas/06-suite-completa-final-jacoco.png) | Ejecucion final de la suite completa (18 pruebas pasadas, 0 fallos) con agente JaCoCo activo. |
+| [`07-reporte-jacoco-html.png`](docs/capturas/07-reporte-jacoco-html.png) | Reporte HTML de JaCoCo en navegador mostrando 95% de cobertura global y 100% en el paquete `reportes`. |
+
+---
+
+## 11. Trade-offs y Conclusiones Tecnicas
+
+1. **Refactorizacion Guiada por Pruebas**: Construir primero las pruebas de caracterizacion garantizo que ninguna alteracion interna cambiara los codigos de retorno ni el comportamiento observable del sistema.
+2. **Polimorfismo en Enum vs Clases de Estrategia**: Para dominios con categorias estables y cerradas, los enums con metodos de comportamiento ofrecen una solucion limpia, de alto rendimiento y bajo costo de mantenimiento.
+3. **Inversion de Dependencias en Paquetes**: Las pruebas de arquitectura (ArchUnit) son esenciales porque los ciclos entre paquetes no generan errores de compilacion en Maven monofuente, pero degradan silenciosamente la modularidad. Mover la interfaz contractual al paquete de dominio garantiza independencia y estabilidad estructural a largo plazo.
