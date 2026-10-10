@@ -89,58 +89,53 @@ palacio-post1-u11/
 ```mermaid
 classDiagram
     direction TB
-    package "com.universidad.refactoringu11.inventario" {
-        class InventarioService {
-            -List~Producto~ productos
-            -List~String~ movimientos
-            -CalculadoraReorden calculadoraReorden
-            -NotificadorBajoStock notificador
-            +actualizarInventario(Long, int, String) String
-            +agregarProducto(Producto) void
-            +setNotificador(NotificadorBajoStock) void
-        }
-        class CalculadoraReorden {
-            +necesitaReorden(Producto, int) boolean
-            +calcularCantidadReorden(Producto, int) int
-        }
-        class NotificadorBajoStock {
-            <<interface>>
-            +notificar(Producto, int) void
-        }
-        class Producto {
-            -Long id
-            -String nombre
-            -TipoProducto tipo
-            -double precio
-            -int stock
-            -int stockMinimo
-            +getStock() int
-            +setStock(int) void
-        }
-        class TipoProducto {
-            <<enumeration>>
-            LIBRO
-            ELECTRONICO
-            ROPA
-            ALIMENTO
-            +calcularRecargoEnvio(double)* double
-            +generarEtiqueta(String)* String
-        }
-        class ClasificadorProducto {
-            +calcularRecargoEnvio(Producto) double
-        }
-        class EtiquetadoProducto {
-            +generarEtiqueta(Producto) String
-        }
+    class InventarioService {
+        -List~Producto~ productos
+        -List~String~ movimientos
+        -CalculadoraReorden calculadoraReorden
+        -NotificadorBajoStock notificador
+        +actualizarInventario(Long, int, String) String
+        +agregarProducto(Producto) void
+        +setNotificador(NotificadorBajoStock) void
     }
-
-    package "com.universidad.refactoringu11.reportes" {
-        class ReporteBajoStockService {
-            -InventarioService inventarioService
-            -List~String~ alertas
-            +notificar(Producto, int) void
-            +generarReporte() String
-        }
+    class CalculadoraReorden {
+        +necesitaReorden(Producto, int) boolean
+        +calcularCantidadReorden(Producto, int) int
+    }
+    class NotificadorBajoStock {
+        <<interface>>
+        +notificar(Producto, int) void
+    }
+    class Producto {
+        -Long id
+        -String nombre
+        -TipoProducto tipo
+        -double precio
+        -int stock
+        -int stockMinimo
+        +getStock() int
+        +setStock(int) void
+    }
+    class TipoProducto {
+        <<enumeration>>
+        LIBRO
+        ELECTRONICO
+        ROPA
+        ALIMENTO
+        +calcularRecargoEnvio(double)* double
+        +generarEtiqueta(String)* String
+    }
+    class ClasificadorProducto {
+        +calcularRecargoEnvio(Producto) double
+    }
+    class EtiquetadoProducto {
+        +generarEtiqueta(Producto) String
+    }
+    class ReporteBajoStockService {
+        -InventarioService inventarioService
+        -List~String~ alertas
+        +notificar(Producto, int) void
+        +generarReporte() String
     }
 
     InventarioService o-- CalculadoraReorden : delega calculo reorden
@@ -397,7 +392,7 @@ La suite completa (18 pruebas) se ejecuto tras la resolucion del ciclo. Ninguna 
 - Java Development Kit (JDK) 17 LTS o superior.
 - Apache Maven 3.9 o superior.
 
-### Comandos para Windows PowerShell
+### Comandos de Ejecucion (Windows PowerShell)
 ```powershell
 # 1. Limpiar y compilar el proyecto
 mvn clean compile
@@ -412,21 +407,6 @@ mvn test -Dtest=ArquitecturaPaquetesTest
 mvn test jacoco:report
 ```
 
-### Comandos para Bash (Linux / macOS / WSL)
-```bash
-# 1. Limpiar y compilar el proyecto
-mvn clean compile
-
-# 2. Ejecutar toda la suite de pruebas
-mvn test
-
-# 3. Ejecutar prueba de arquitectura
-mvn test -Dtest=ArquitecturaPaquetesTest
-
-# 4. Generar reporte JaCoCo
-mvn test jacoco:report
-```
-
 ---
 
 ## 10. Evidencias de Ejecucion y Capturas
@@ -435,13 +415,41 @@ Todas las capturas reflejan ejecuciones reales y verificables generadas durante 
 
 | Archivo de Captura | Descripcion de la Evidencia |
 | :--- | :--- |
-| [`01-mvn-compile-original.png`](docs/capturas/01-mvn-compile-original.png) | Compilacion inicial exitosa de los archivos de partida con code smells (`mvn clean compile`). |
-| [`02-pruebas-caracterizacion-verdes.png`](docs/capturas/02-pruebas-caracterizacion-verdes.png) | Suite de 14 pruebas de caracterizacion ejecutadas en verde sobre el codigo original antes de modificarlo. |
-| [`03-refactor-parte1-pruebas-verdes.png`](docs/capturas/03-refactor-parte1-pruebas-verdes.png) | Pruebas unitarias pasando en verde tras refactorizar Long Method y el switch polimorfico. |
-| [`04-archunit-ciclo-en-rojo.png`](docs/capturas/04-archunit-ciclo-en-rojo.png) | Deteccion automatica en rojo del ciclo `inventario <-> reportes` mediante la regla de ArchUnit. |
-| [`05-archunit-ciclo-resuelto-verde.png`](docs/capturas/05-archunit-ciclo-resuelto-verde.png) | Prueba de arquitectura en verde (`BUILD SUCCESS`) tras aplicar Inversion de Dependencias con `NotificadorBajoStock`. |
-| [`06-suite-completa-final-jacoco.png`](docs/capturas/06-suite-completa-final-jacoco.png) | Ejecucion final de la suite completa (18 pruebas pasadas, 0 fallos) con agente JaCoCo activo. |
-| [`07-reporte-jacoco-html.png`](docs/capturas/07-reporte-jacoco-html.png) | Reporte HTML de JaCoCo en navegador mostrando 95% de cobertura global y 100% en el paquete `reportes`. |
+| `01-mvn-compile-original.png` | Compilacion inicial exitosa de los archivos de partida con code smells (`mvn clean compile`). |
+| `02-pruebas-caracterizacion-verdes.png` | Suite de 14 pruebas de caracterizacion ejecutadas en verde sobre el codigo original antes de modificarlo. |
+| `03-refactor-parte1-pruebas-verdes.png` | Pruebas unitarias pasando en verde tras refactorizar Long Method y el switch polimorfico. |
+| `04-archunit-ciclo-en-rojo.png` | Deteccion automatica en rojo del ciclo `inventario <-> reportes` mediante la regla de ArchUnit. |
+| `05-archunit-ciclo-resuelto-verde.png` | Prueba de arquitectura en verde (`BUILD SUCCESS`) tras aplicar Inversion de Dependencias con `NotificadorBajoStock`. |
+| `06-suite-completa-final-jacoco.png` | Ejecucion final de la suite completa (18 pruebas pasadas, 0 fallos) con agente JaCoCo activo. |
+| `07-reporte-jacoco-html.png` | Reporte HTML de JaCoCo en navegador mostrando 95% de cobertura global y 100% en el paquete `reportes`. |
+
+### Evidencia 01: Compilacion Inicial de Codigo Original (Paso 1)
+![Compilacion inicial exitosa](docs/capturas/01-mvn-compile-original.png)
+*Compilacion inicial exitosa de los archivos de partida con code smells (`mvn clean compile`).*
+
+### Evidencia 02: Suite de Pruebas de Caracterizacion en Verde (Paso 2)
+![Pruebas de caracterizacion en verde](docs/capturas/02-pruebas-caracterizacion-verdes.png)
+*Suite de 14 pruebas de caracterizacion ejecutadas en verde sobre el codigo original antes de modificarlo (`mvn test`).*
+
+### Evidencia 03: Pruebas Unitarias en Verde tras Refactorizacion (Paso 3)
+![Pruebas unitarias en verde tras refactorizacion](docs/capturas/03-refactor-parte1-pruebas-verdes.png)
+*Pruebas unitarias pasando en verde tras refactorizar Long Method y reemplazar el switch duplicado por polimorfismo.*
+
+### Evidencia 04: Deteccion de Dependencia Ciclica con ArchUnit en Rojo (Paso 4)
+![ArchUnit fallo ciclo en rojo](docs/capturas/04-archunit-ciclo-en-rojo.png)
+*Deteccion automatica en rojo del ciclo bidireccional entre `inventario` y `reportes` mediante la regla de slices de ArchUnit.*
+
+### Evidencia 05: Resolucion de Ciclo con Inversion de Dependencias en Verde (Paso 5)
+![ArchUnit resuelto en verde](docs/capturas/05-archunit-ciclo-resuelto-verde.png)
+*Prueba de arquitectura en verde (`BUILD SUCCESS`) tras aplicar Inversion de Dependencias extrayendo `NotificadorBajoStock` al dominio.*
+
+### Evidencia 06: Ejecucion de Suite Completa Final con JaCoCo (Paso 6)
+![Suite completa con JaCoCo](docs/capturas/06-suite-completa-final-jacoco.png)
+*Ejecucion final de la suite completa (18 pruebas ejecutadas, 0 fallos, 0 errores) con agente JaCoCo activo.*
+
+### Evidencia 07: Reporte HTML de Cobertura JaCoCo (Paso 7)
+![Reporte JaCoCo HTML](docs/capturas/07-reporte-jacoco-html.png)
+*Reporte HTML de JaCoCo visualizado en navegador, acreditando 95% de cobertura global y 100% en el paquete `reportes`.*
 
 ---
 

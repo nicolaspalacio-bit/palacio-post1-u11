@@ -8,11 +8,6 @@ Esta guia documenta los comandos de ejecucion, los casos de prueba automatizados
 
 ### Ejecucion Completa de la Suite de Pruebas
 ```powershell
-# Windows PowerShell
-mvn clean test
-```
-```bash
-# Bash (Linux / macOS / WSL)
 mvn clean test
 ```
 
