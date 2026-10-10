@@ -1,20 +1,12 @@
 package com.universidad.refactoringu11.inventario;
 
+/**
+ * Servicio de etiquetado que delega polimorficamente la generacion del formato al tipo de producto.
+ * Elimina la duplicacion estructural de control de flujo frente a ClasificadorProducto.
+ */
 public class EtiquetadoProducto {
 
-    // Mismo switch sobre TipoProducto que ClasificadorProducto - duplicacion estructural
     public String generarEtiqueta(Producto producto) {
-        switch (producto.getTipo()) {
-            case LIBRO:
-                return "[LIBRO] " + producto.getNombre() + " - Exento de IVA";
-            case ELECTRONICO:
-                return "[ELECTRO] " + producto.getNombre() + " - Garantia 1 ano";
-            case ROPA:
-                return "[ROPA] " + producto.getNombre() + " - Ver talla";
-            case ALIMENTO:
-                return "[ALIMENTO] " + producto.getNombre() + " - Perecedero";
-            default: throw new IllegalArgumentException(
-                "Tipo de producto desconocido: " + producto.getTipo());
-        }
+        return producto.getTipo().generarEtiqueta(producto.getNombre());
     }
 }
