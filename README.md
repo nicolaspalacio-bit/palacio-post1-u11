@@ -143,6 +143,52 @@ Se aplico la tecnica **Replace Conditional with Polymorphism**:
 
 ---
 
+## Parte 2: Diagnostico y Resolucion de Acoplamiento entre Paquetes
+
+### Diagnostico: Deteccion de Dependencia Ciclica con ArchUnit (En Rojo)
+
+Al integrar el modulo de reportes (`ReporteBajoStockService`), se introdujo inadvertidamente un ciclo de dependencias directo entre los paquetes `inventario` y `reportes`:
+
+```mermaid
+flowchart LR
+    subgraph inventario["Paquete: inventario (Dominio)"]
+        IS["InventarioService"]
+    end
+    subgraph reportes["Paquete: reportes (Soporte / Infraestructura)"]
+        RS["ReporteBajoStockService"]
+    end
+
+    IS -->|importa| RS
+    RS -->|importa| IS
+
+    classDef cycle stroke:#d9534f,stroke-width:2px;
+    class IS,RS cycle;
+```
+
+#### Evidencia del Fallo en Rojo (`ArquitecturaPaquetesTest`)
+Al ejecutar la regla de arquitectura en ArchUnit:
+```bash
+mvn test -Dtest=ArquitecturaPaquetesTest
+```
+La prueba falla reportando la violacion arquitectonica:
+```text
+[ERROR] Failures: 
+[ERROR]   ArquitecturaPaquetesTest.losPaquetesNoDebenTenerDependenciasCiclicas:18 
+Architecture Violation [Priority: MEDIUM] - Rule 'slices matching 'com.universidad.refactoringu11.(*)..' should be free of cycles' was violated (1 times):
+Cycle detected: Slice inventario -> Slice reportes -> Slice inventario
+  1. Dependencies of Slice inventario
+    - Field <InventarioService.reporteBajoStockService> has type <ReporteBajoStockService>
+    - Method <InventarioService.setReporteBajoStockService(ReporteBajoStockService)>
+    - Method <InventarioService.procesarResultadoReorden(...)> calls method <ReporteBajoStockService.generarReporte()>
+  2. Dependencies of Slice reportes
+    - Constructor <ReporteBajoStockService.<init>(InventarioService)>
+    - Field <ReporteBajoStockService.inventarioService> has type <InventarioService>
+```
+
+**Observacion clave**: Todas las pruebas unitarias de logica de negocio (`InventarioServiceTest`, `ClasificadorProductoTest`, `EtiquetadoProductoTest`) continuaron pasando en verde durante este estado. Esto evidencia empíricamente que las fallas de arquitectura y acoplamiento estructural no se manifiestan como errores funcionales visibles, requiriendo pruebas de arquitectura automatizadas para su fiscalizacion continua.
+
+---
+
 ## Instrucciones de Ejecucion
 
 ### Compilacion y Ejecucion de Pruebas en Windows PowerShell:
