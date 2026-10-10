@@ -9,57 +9,62 @@ public class InventarioService {
 
     private final List<Producto> productos = new ArrayList<>();
     private final List<String> movimientos = new ArrayList<>();
+    private final CalculadoraReorden calculadoraReorden;
+
+    public InventarioService() {
+        this(new CalculadoraReorden());
+    }
+
+    public InventarioService(CalculadoraReorden calculadoraReorden) {
+        this.calculadoraReorden = calculadoraReorden;
+    }
 
     public void agregarProducto(Producto producto) {
         productos.add(producto);
     }
 
-    // Long Method: valida, busca, actualiza stock, calcula reorden
-    // y registra/alerta, todo en un solo metodo (Bloater)
     public String actualizarInventario(Long productoId, int cantidad, String tipoMovimiento) {
-
-        // Validacion de entrada (deberia ser responsabilidad propia)
-        if (productoId == null || cantidad == 0
-                || (!tipoMovimiento.equals("ENTRADA") && !tipoMovimiento.equals("SALIDA"))) {
-            return "ERROR_DATOS_INVALIDOS";
-        }
-
-        // Busqueda del producto (mezclada con la logica de negocio)
-        Producto producto = null;
-        for (Producto p : productos) {
-            if (p.getId().equals(productoId)) {
-                producto = p;
-                break;
-            }
-        }
+        if (!esValido(productoId, cantidad, tipoMovimiento)) return "ERROR_DATOS_INVALIDOS";
+        Producto producto = buscarProducto(productoId);
         if (producto == null) return "ERROR_PRODUCTO_NO_EXISTE";
-
-        // Actualizacion de stock
-        int nuevoStock;
-        if (tipoMovimiento.equals("ENTRADA")) {
-            nuevoStock = producto.getStock() + cantidad;
-        } else {
-            nuevoStock = producto.getStock() - cantidad;
-            if (nuevoStock < 0) return "ERROR_STOCK_INSUFICIENTE";
-        }
+        int nuevoStock = calcularNuevoStock(producto, cantidad, tipoMovimiento);
+        if (nuevoStock < 0) return "ERROR_STOCK_INSUFICIENTE";
         producto.setStock(nuevoStock);
+        registrarAuditoria(tipoMovimiento, cantidad, producto, nuevoStock);
+        return procesarResultadoReorden(producto, nuevoStock);
+    }
 
-        // Calculo de cantidad de reorden (otra responsabilidad distinta)
-        boolean necesitaReorden = nuevoStock < producto.getStockMinimo();
-        int cantidadReorden = necesitaReorden
-            ? (producto.getStockMinimo() * 3) - nuevoStock : 0;
+    private boolean esValido(Long productoId, int cantidad, String tipoMovimiento) {
+        return productoId != null && cantidad != 0
+                && ("ENTRADA".equals(tipoMovimiento) || "SALIDA".equals(tipoMovimiento));
+    }
 
-        // Registro del movimiento (responsabilidad de auditoria)
+    private Producto buscarProducto(Long productoId) {
+        for (Producto p : productos) {
+            if (p.getId().equals(productoId)) return p;
+        }
+        return null;
+    }
+
+    private int calcularNuevoStock(Producto producto, int cantidad, String tipoMovimiento) {
+        return "ENTRADA".equals(tipoMovimiento)
+                ? producto.getStock() + cantidad
+                : producto.getStock() - cantidad;
+    }
+
+    private void registrarAuditoria(String tipoMovimiento, int cantidad, Producto producto, int nuevoStock) {
         String registro = tipoMovimiento + " de " + cantidad + " unidades de "
-            + producto.getNombre() + " -> stock final: " + nuevoStock;
+                + producto.getNombre() + " -> stock final: " + nuevoStock;
         movimientos.add(registro);
         System.out.println(registro);
+    }
 
-        // Decision de alerta (responsabilidad de notificacion)
-        if (necesitaReorden) {
+    private String procesarResultadoReorden(Producto producto, int nuevoStock) {
+        if (calculadoraReorden.necesitaReorden(producto, nuevoStock)) {
+            int reorden = calculadoraReorden.calcularCantidadReorden(producto, nuevoStock);
             System.out.println("ALERTA: " + producto.getNombre()
-                + " bajo stock minimo. Reordenar " + cantidadReorden + " unidades.");
-            return "OK_BAJO_STOCK_REORDEN_" + cantidadReorden;
+                    + " bajo stock minimo. Reordenar " + reorden + " unidades.");
+            return "OK_BAJO_STOCK_REORDEN_" + reorden;
         }
         return "OK_" + nuevoStock;
     }
