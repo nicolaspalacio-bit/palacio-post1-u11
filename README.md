@@ -71,6 +71,7 @@ palacio-post1-u11/
     │       └── ReporteBajoStockService.java     # Adaptador que implementa NotificadorBajoStock
     └── test/java/com/universidad/refactoringu11/
         ├── ArquitecturaPaquetesTest.java        # Reglas de slices libres de ciclos (ArchUnit)
+        ├── InventarioIntegrationTest.java       # Prueba de integracion punta a punta con contexto real Spring Boot
         ├── inventario/
         │   ├── CalculadoraReordenTest.java      # Pruebas unitarias de la formula de reorden
         │   ├── ClasificadorProductoTest.java    # Pruebas de caracterizacion de recargos (4 tipos)
@@ -97,6 +98,7 @@ classDiagram
         +actualizarInventario(Long, int, String) String
         +agregarProducto(Producto) void
         +setNotificador(NotificadorBajoStock) void
+        +getNotificador() NotificadorBajoStock
     }
     class CalculadoraReorden {
         +necesitaReorden(Producto, int) boolean
@@ -132,10 +134,10 @@ classDiagram
         +generarEtiqueta(Producto) String
     }
     class ReporteBajoStockService {
-        -InventarioService inventarioService
         -List~String~ alertas
         +notificar(Producto, int) void
         +generarReporte() String
+        +getAlertas() List~String~
     }
 
     InventarioService o-- CalculadoraReorden : delega calculo reorden
@@ -147,7 +149,6 @@ classDiagram
     ClasificadorProducto ..> TipoProducto : delega polimorficamente
     EtiquetadoProducto ..> TipoProducto : delega polimorficamente
     ReporteBajoStockService ..|> NotificadorBajoStock : implementa (Adaptador)
-    ReporteBajoStockService o-- InventarioService : consulta opcional
 ```
 
 ---
@@ -213,7 +214,6 @@ flowchart TD
             RS_B["Adaptador: ReporteBajoStockService"]
         end
         RS_B -->|implementa e importa| NBS_B
-        RS_B -.->|importa| IS_B
     end
 
     classDef redStyle stroke:#d9534f,stroke-width:2px,fill:#ffeef0;
@@ -354,12 +354,13 @@ Al integrar el modulo `com.universidad.refactoringu11.reportes.ReporteBajoStockS
 Se aplico el principio de Inversion de Dependencias (DIP) y Puertos y Adaptadores:
 1. Se extrajo la interfaz `NotificadorBajoStock` dentro del paquete `inventario` (dominio).
 2. Se eliminaron todos los imports de `reportes.*` dentro de `InventarioService`.
-3. `ReporteBajoStockService` implementa `NotificadorBajoStock` como adaptador secundario.
-4. Se ejecuto nuevamente `ArquitecturaPaquetesTest`, pasando en **VERDE** con 0 violaciones.
+3. `ReporteBajoStockService` implementa `NotificadorBajoStock` como adaptador secundario. Para evitar dependencias circulares tanto a nivel de paquetes como en el contenedor IoC de Spring Boot, se retiro el acoplamiento no utilizado hacia `InventarioService`, dejando una dependencia estrictamente unidireccional `reportes -> NotificadorBajoStock`.
+4. Se ejecuto `ArquitecturaPaquetesTest` (ArchUnit), pasando en **VERDE** con 0 violaciones.
+5. Se agrego `InventarioIntegrationTest` con `@SpringBootTest`, verificando que el ApplicationContext de Spring Boot inicia limpiamente y ejecuta la notificacion de bajo stock de punta a punta.
 
 ### Verificacion Final de Preservacion de Comportamiento
 
-La suite completa (18 pruebas) se ejecuto tras la resolucion del ciclo. Ninguna de las pruebas de caracterizacion de la Parte 1 fue modificada y todas continuaron pasando en verde, certificando paridad funcional estricta.
+La suite completa (19 pruebas automatizadas: 14 de caracterizacion, 2 de `CalculadoraReorden`, 1 de `ReporteBajoStockService`, 1 de arquitectura con ArchUnit y 1 de integracion con Spring Boot) se ejecuta en verde. Ninguna de las pruebas de caracterizacion de la Parte 1 fue modificada y todas continuaron pasando en verde, certificando paridad funcional estricta.
 
 ---
 
@@ -382,7 +383,9 @@ La suite completa (18 pruebas) se ejecuto tras la resolucion del ciclo. Ninguna 
 | **Complejidad Ciclomatica (CC)** | 9 | 1 (lineal en metodo principal) | Reduccion drastica del esfuerzo cognitivo |
 | **Sentencias Switch sobre Tipo** | 2 bloques duplicados | 0 bloques (0% condicionales) | Eliminacion total de duplicacion de control |
 | **Acoplamiento de Paquetes** | Ciclo bidireccional (A <-> B) | Flujo unidir. (`reportes` -> `inventario`) | Slices 100% libres de ciclos (ArchUnit) |
-| **Pruebas Automatizadas Totales** | 0 pruebas iniciales | 18 pruebas en verde | Red de seguridad con 95% cobertura JaCoCo |
+| **Ciclo de Beans en Spring Boot** | Fallo en arranque IoC (`Requested bean is currently in creation`) | Resuelto (desacoplamiento total de beans) | Arranque limpio exitoso en 1.0 s (`spring-boot:run`) |
+| **Pruebas Automatizadas Totales** | 0 pruebas iniciales | 19 pruebas en verde | Red de seguridad unitaria, arquitectura e integracion |
+| **Cobertura Global JaCoCo** | 0% inicial | 98.6% instrucciones (97.8% lineas) | 100% de cobertura en paquetes de dominio y reportes |
 
 ---
 
@@ -397,14 +400,20 @@ La suite completa (18 pruebas) se ejecuto tras la resolucion del ciclo. Ninguna 
 # 1. Limpiar y compilar el proyecto
 mvn clean compile
 
-# 2. Ejecutar toda la suite de pruebas unitarias y de arquitectura
+# 2. Ejecutar toda la suite de pruebas (unitarias, arquitectura e integracion)
 mvn test
 
 # 3. Ejecutar exclusivamente la prueba de arquitectura ArchUnit
 mvn test -Dtest=ArquitecturaPaquetesTest
 
-# 4. Generar reporte de cobertura JaCoCo
+# 4. Ejecutar exclusivamente la prueba de integracion Spring Boot
+mvn test -Dtest=InventarioIntegrationTest
+
+# 5. Generar reporte de cobertura JaCoCo
 mvn test jacoco:report
+
+# 6. Ejecutar la aplicacion Spring Boot
+mvn spring-boot:run
 ```
 
 ---

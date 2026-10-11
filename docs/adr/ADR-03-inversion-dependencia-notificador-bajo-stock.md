@@ -33,6 +33,7 @@ Conforme a los fundamentos de Clean Architecture (Martin, 2017) y Arquitectura H
 ### Positivas
 - **Ruptura Definitiva del Ciclo**: La dependencia fluye ahora en una sola direccion permitida: `reportes -> inventario`. El paquete `inventario` no posee ningun `import` hacia `reportes`.
 - **Validacion Automatica en Verde**: La regla `beFreeOfCycles()` de ArchUnit pasa satisfactoriamente.
+- **Ausencia de Ciclos de Beans en Spring Boot**: Al remover el acoplamiento no utilizado de `ReporteBajoStockService` hacia `InventarioService`, el contenedor de Spring Boot arranca limpiamente sin errores de dependencias circulares.
 - **Independencia del Dominio**: El modulo `inventario` puede compilarse, probarse y desplegarse de manera totalmente aislada sin requerir la presencia del modulo de reportes.
 
 ### Trade-offs y Mitigaciones

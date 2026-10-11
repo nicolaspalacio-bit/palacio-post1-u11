@@ -26,6 +26,10 @@ public class InventarioService {
         this.notificador = notificador;
     }
 
+    public NotificadorBajoStock getNotificador() {
+        return notificador;
+    }
+
     public void agregarProducto(Producto producto) {
         productos.add(producto);
     }

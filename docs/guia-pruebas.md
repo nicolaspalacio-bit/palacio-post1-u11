@@ -16,6 +16,11 @@ mvn clean test
 mvn test -Dtest=ArquitecturaPaquetesTest
 ```
 
+### Ejecucion Específica de la Prueba de Integracion (Spring Boot)
+```powershell
+mvn test -Dtest=InventarioIntegrationTest
+```
+
 ### Generacion de Reportes de Cobertura de Codigo (JaCoCo)
 ```powershell
 mvn test jacoco:report
@@ -92,10 +97,18 @@ Ubicacion: `src/test/java/com/universidad/refactoringu11/reportes/ReporteBajoSto
 
 ---
 
+### G. Prueba de Integracion Punta a Punta (`InventarioIntegrationTest`)
+Ubicacion: `src/test/java/com/universidad/refactoringu11/InventarioIntegrationTest.java`
+
+| Metodo de Prueba | Escenario | Salida Esperada | Proposito |
+| :--- | :--- | :--- | :--- |
+| `contextoSpringIniciaYNotificacionBajoStockFuncionaPuntaAPunta` | Arranque del contexto real con `@SpringBootTest`, registro de producto y salida que cruza stock minimo (stock final = 2 < 5) | `"OK_BAJO_STOCK_REORDEN_13"`, alerta registrada con 13 unidades | Valida ausencia de ciclo de beans en Spring Boot, inyeccion correcta del adaptador e integracion funcional punta a punta. |
+
+---
+
 ## 3. Resumen Consolidado de Ejecucion
 
 ```text
-Tests run: 18, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 19, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
-Total time: ~6.5 s
 ```
